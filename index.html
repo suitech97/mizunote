@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Goodnotes風メモアプリ</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #toolbar {
+      padding: 10px;
+      background: #eee;
+      border-bottom: 1px solid #ccc;
+      display: flex;
+      gap: 10px;
+    }
+    #noteSelector {
+      flex: 1;
+      background: #fafafa;
+      padding: 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-start;
+    }
+    .note-thumb {
+      width: 120px;
+      height: 160px;
+      background-size: cover;
+      background-position: center;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
+    #canvasContainer {
+      flex: 1;
+      position: relative;
+      display: none;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <button onclick="addNote('blank')">白紙追加</button>
+    <button onclick="addNote('lined')">横罫用紙追加</button>
+    <button onclick="backToSelector()">一覧に戻る</button>
+  </div>
+  <div id="noteSelector"></div>
+  <div id="canvasContainer">
+    <canvas id="drawCanvas"></canvas>
+  </div>
+
+  <script>
+    const noteSelector = document.getElementById("noteSelector");
+    const canvasContainer = document.getElementById("canvasContainer");
+    const canvas = document.getElementById("drawCanvas");
+    const ctx = canvas.getContext("2d");
+    let notes = [];
+    let currentNote = null;
+
+    const images = {
+      blank: "file-QtULKtFmtUjnFv7LHh1TAq.jpg",
+      lined: "file-2yB3cQo4kFUWfJHauUNnmp.jpg"
+    };
+
+    function addNote(type) {
+      const bg = images[type];
+      const data = { background: bg, image: null };
+      notes.push(data);
+      renderNotes();
+    }
+
+    function renderNotes() {
+      noteSelector.innerHTML = '';
+      notes.forEach((note, index) => {
+        const thumb = document.createElement("div");
+        thumb.className = "note-thumb";
+        thumb.style.backgroundImage = `url('${note.background}')`;
+        thumb.onclick = () => openNote(index);
+        noteSelector.appendChild(thumb);
+      });
+    }
+
+    function openNote(index) {
+      currentNote = index;
+      noteSelector.style.display = "none";
+      canvasContainer.style.display = "block";
+      resizeCanvas();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvasContainer.style.backgroundImage = `url('${notes[index].background}')`;
+      canvasContainer.style.backgroundSize = 'cover';
+      canvasContainer.style.backgroundPosition = 'center';
+      if (notes[index].image) {
+        const img = new Image();
+        img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        img.src = notes[index].image;
+      }
+    }
+
+    function backToSelector() {
+      saveCurrentNote();
+      canvasContainer.style.display = "none";
+      noteSelector.style.display = "flex";
+    }
+
+    function saveCurrentNote() {
+      if (currentNote !== null) {
+        notes[currentNote].image = canvas.toDataURL();
+      }
+    }
+
+    function resizeCanvas() {
+      canvas.width = canvasContainer.clientWidth;
+      canvas.height = canvasContainer.clientHeight;
+    }
+    window.addEventListener("resize", resizeCanvas);
+
+    // Drawing logic
+    let drawing = false;
+    canvas.addEventListener("mousedown", e => {
+      drawing = true;
+      ctx.beginPath();
+      ctx.moveTo(e.offsetX, e.offsetY);
+    });
+    canvas.addEventListener("mousemove", e => {
+      if (!drawing) return;
+      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.stroke();
+    });
+    canvas.addEventListener("mouseup", () => drawing = false);
+    canvas.addEventListener("mouseleave", () => drawing = false);
+  </script>
+</body>
+</html>
