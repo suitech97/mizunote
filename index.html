@@ -90,7 +90,8 @@
       const bg = images[type];
       const data = { background: bg, image: null };
       notes.push(data);
-      renderNotes();
+      currentNote = notes.length - 1;
+      openNote(currentNote);
     }
 
     function renderNotes() {
@@ -110,15 +111,13 @@
           thumbCtx.fillRect(0, 0, 120, 160);
           thumbCtx.drawImage(img, 0, 0, 120, 160);
           if (note.image) {
-  // 入れ替え方式：手書き画像だけを使用する
-  const overlay = new Image();
-  overlay.onload = () => {
-    thumbCtx.clearRect(0, 0, 120, 160);
-    thumbCtx.drawImage(overlay, 0, 0, 120, 160);
-    thumb.style.backgroundImage = `url('${thumbCanvas.toDataURL()}')`;
-  };
-  overlay.src = note.image;
-}
+            const overlay = new Image();
+            overlay.onload = () => {
+              thumbCtx.clearRect(0, 0, 120, 160);
+              thumbCtx.drawImage(overlay, 0, 0, 120, 160);
+              thumb.style.backgroundImage = `url('${thumbCanvas.toDataURL()}')`;
+            };
+            overlay.src = note.image;
           } else {
             thumb.style.backgroundImage = `url('${thumbCanvas.toDataURL()}')`;
           }
