@@ -99,23 +99,26 @@
         const thumb = document.createElement("div");
         thumb.className = "note-thumb";
         const thumbCanvas = document.createElement("canvas");
-        thumbCanvas.width = 240;
-        thumbCanvas.height = 320;
+        thumbCanvas.width = 120;
+        thumbCanvas.height = 160;
         const thumbCtx = thumbCanvas.getContext("2d");
 
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.onload = () => {
           thumbCtx.fillStyle = "#fff";
-          thumbCtx.fillRect(0, 0, 240, 320);
-          thumbCtx.drawImage(img, 0, 0, 240, 320);
+          thumbCtx.fillRect(0, 0, 120, 160);
+          thumbCtx.drawImage(img, 0, 0, 120, 160);
           if (note.image) {
-            const overlay = new Image();
-            overlay.onload = () => {
-              thumbCtx.drawImage(overlay, 0, 0, 240, 320);
-              thumb.style.backgroundImage = `url('${thumbCanvas.toDataURL()}')`;
-            };
-            overlay.src = note.image;
+  // 入れ替え方式：手書き画像だけを使用する
+  const overlay = new Image();
+  overlay.onload = () => {
+    thumbCtx.clearRect(0, 0, 120, 160);
+    thumbCtx.drawImage(overlay, 0, 0, 120, 160);
+    thumb.style.backgroundImage = `url('${thumbCanvas.toDataURL()}')`;
+  };
+  overlay.src = note.image;
+}
           } else {
             thumb.style.backgroundImage = `url('${thumbCanvas.toDataURL()}')`;
           }
