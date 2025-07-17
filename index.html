@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Goodnotes風メモアプリ</title>
+  <title>mizunote</title>
   <style>
     html, body {
       margin: 0;
@@ -28,16 +28,15 @@
       overflow-y: auto;
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      justify-content: flex-start;
     }
     .note-thumb {
       width: 120px;
       height: 160px;
       background-size: cover;
       background-position: center;
-      border: 1px solid #ccc;
+      border: 1px solid #000;
       cursor: pointer;
+      margin: 10px;
     }
     #canvasContainer {
       flex: 1;
@@ -55,6 +54,11 @@
 </head>
 <body>
   <div id="toolbar">
+    <select onchange="tool = this.value">
+      <option value="pen">🖊 ペン</option>
+      <option value="eraser">🧽 消しゴム</option>
+    </select>
+    <input type="range" min="5" max="50" value="20" onchange="eraserSize = this.value">
     <button onclick="addNote('blank')">白紙追加</button>
     <button onclick="addNote('lined')">横罫用紙追加</button>
     <button onclick="backToSelector()">一覧に戻る</button>
@@ -70,12 +74,17 @@
     const canvas = document.getElementById("drawCanvas");
     const ctx = canvas.getContext("2d");
     let notes = [];
+    let tool = 'pen';
+    let eraserSize = 20;
     let currentNote = null;
+    let drawing = false;
 
     const images = {
-      blank: "file-QtULKtFmtUjnFv7LHh1TAq.jpg",
-      lined: "file-2yB3cQo4kFUWfJHauUNnmp.jpg"
+      blank: "https://izumi738.github.io/mizunote/p0091_m.jpg",
+      lined: "https://izumi738.github.io/mizunote/p00_m.jpg"
     };
+
+    let drawingBounds = null;
 
     function addNote(type) {
       const bg = images[type];
@@ -89,7 +98,30 @@
       notes.forEach((note, index) => {
         const thumb = document.createElement("div");
         thumb.className = "note-thumb";
-        thumb.style.backgroundImage = `url('${note.background}')`;
+        const thumbCanvas = document.createElement("canvas");
+        thumbCanvas.width = 240;
+        thumbCanvas.height = 320;
+        const thumbCtx = thumbCanvas.getContext("2d");
+
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          thumbCtx.fillStyle = "#fff";
+          thumbCtx.fillRect(0, 0, 240, 320);
+          thumbCtx.drawImage(img, 0, 0, 240, 320);
+          if (note.image) {
+            const overlay = new Image();
+            overlay.onload = () => {
+              thumbCtx.drawImage(overlay, 0, 0, 240, 320);
+              thumb.style.backgroundImage = `url('${thumbCanvas.toDataURL()}')`;
+            };
+            overlay.src = note.image;
+          } else {
+            thumb.style.backgroundImage = `url('${thumbCanvas.toDataURL()}')`;
+          }
+        };
+        img.src = note.background;
+
         thumb.onclick = () => openNote(index);
         noteSelector.appendChild(thumb);
       });
@@ -100,53 +132,153 @@
       noteSelector.style.display = "none";
       canvasContainer.style.display = "block";
       resizeCanvas();
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      canvasContainer.style.backgroundImage = `url('${notes[index].background}')`;
-      canvasContainer.style.backgroundSize = 'cover';
-      canvasContainer.style.backgroundPosition = 'center';
-      if (notes[index].image) {
-        const img = new Image();
-        img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        img.src = notes[index].image;
-      }
+      render();
     }
 
     function backToSelector() {
       saveCurrentNote();
       canvasContainer.style.display = "none";
       noteSelector.style.display = "flex";
+      renderNotes();
     }
 
     function saveCurrentNote() {
       if (currentNote !== null) {
-        notes[currentNote].image = canvas.toDataURL();
+        notes[currentNote].image = canvas.toDataURL("image/png");
       }
     }
 
     function resizeCanvas() {
-      canvas.width = canvasContainer.clientWidth;
-      canvas.height = canvasContainer.clientHeight;
+      canvas.width = canvasContainer.clientWidth * window.devicePixelRatio;
+      canvas.height = canvasContainer.clientHeight * window.devicePixelRatio;
+      canvas.style.width = canvasContainer.clientWidth + "px";
+      canvas.style.height = canvasContainer.clientHeight + "px";
+      ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
     }
     window.addEventListener("resize", resizeCanvas);
 
-    // Drawing logic
-    let drawing = false;
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const index = currentNote;
+      const bgImg = new Image();
+      bgImg.crossOrigin = "anonymous";
+      bgImg.src = notes[index].background;
+      bgImg.onload = () => {
+        const scale = Math.min(canvas.width / bgImg.width, canvas.height / bgImg.height);
+        const x = (canvas.width - bgImg.width * scale) / 2;
+        const y = (canvas.height - bgImg.height * scale) / 2;
+        const drawWidth = bgImg.width * scale;
+        const drawHeight = bgImg.height * scale;
+        drawingBounds = { x, y, width: drawWidth, height: drawHeight };
+        ctx.drawImage(bgImg, x, y, drawWidth, drawHeight);
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, drawWidth, drawHeight);
+        if (notes[index].image) {
+          const saved = new Image();
+          saved.src = notes[index].image;
+          saved.onload = () => ctx.drawImage(saved, 0, 0, canvas.width, canvas.height);
+        }
+      };
+    }
+
+    function isInsideBounds(x, y) {
+      if (!drawingBounds) return true;
+      return (
+        x >= drawingBounds.x &&
+        x <= drawingBounds.x + drawingBounds.width &&
+        y >= drawingBounds.y &&
+        y <= drawingBounds.y + drawingBounds.height
+      );
+    }
+
     canvas.addEventListener("mousedown", e => {
-      drawing = true;
-      ctx.beginPath();
-      ctx.moveTo(e.offsetX, e.offsetY);
+      const { offsetX, offsetY } = e;
+      if (isInsideBounds(offsetX, offsetY)) {
+        drawing = true;
+        ctx.beginPath();
+        ctx.moveTo(offsetX, offsetY);
+      }
     });
+
     canvas.addEventListener("mousemove", e => {
-      if (!drawing) return;
-      ctx.lineTo(e.offsetX, e.offsetY);
-      ctx.strokeStyle = "#000";
-      ctx.lineWidth = 2;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.stroke();
+      const { offsetX, offsetY } = e;
+      if (!drawing) {
+        if (tool === 'eraser') {
+          render();
+          ctx.beginPath();
+          ctx.arc(offsetX, offsetY, eraserSize / 2, 0, Math.PI * 2);
+          ctx.strokeStyle = '#888';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+        return;
+      }
+      if (isInsideBounds(offsetX, offsetY)) {
+        if (tool === 'eraser') {
+          ctx.clearRect(offsetX - eraserSize / 2, offsetY - eraserSize / 2, eraserSize, eraserSize);
+        } else {
+          ctx.lineTo(offsetX, offsetY);
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = 2;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.stroke();
+        }
+      } else {
+        drawing = false;
+      }
     });
+
     canvas.addEventListener("mouseup", () => drawing = false);
     canvas.addEventListener("mouseleave", () => drawing = false);
+
+    canvas.addEventListener("touchstart", e => {
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      if (isInsideBounds(x, y)) {
+        drawing = true;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      }
+    });
+
+    canvas.addEventListener("touchmove", e => {
+      if (!drawing) return;
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      if (isInsideBounds(x, y)) {
+        if (tool === 'eraser') {
+          ctx.clearRect(x - eraserSize / 2, y - eraserSize / 2, eraserSize, eraserSize);
+        } else {
+          ctx.lineTo(x, y);
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = 2;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.stroke();
+        }
+      } else {
+        drawing = false;
+      }
+      if (tool === 'eraser') {
+        render();
+        ctx.beginPath();
+        ctx.arc(x, y, eraserSize / 2, 0, Math.PI * 2);
+        ctx.strokeStyle = '#888';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener("touchend", () => drawing = false);
+
+    renderNotes();
   </script>
 </body>
 </html>
