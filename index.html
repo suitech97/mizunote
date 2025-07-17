@@ -93,11 +93,12 @@
   renderNotes();
   noteSelector.style.display = "flex";
   canvasContainer.style.display = "none";
-}
+};
   notes.push(data);
   renderNotes();
   noteSelector.style.display = "flex";
   canvasContainer.style.display = "none";
+}
 
     }
 
@@ -124,9 +125,7 @@
               thumb.style.backgroundImage = `url('${thumbCanvas.toDataURL()}')`;
             };
             overlay.src = note.image;
-          } else {
-            thumb.style.backgroundImage = `url('${thumbCanvas.toDataURL()}')`;
-          }
+          } 
            else {
             thumb.style.backgroundImage = `url('${thumbCanvas.toDataURL()}')`;
           }
